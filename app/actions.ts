@@ -1,10 +1,10 @@
 'use server';
 
-import { redis } from '@/lib/redis';
-import { isValidIcon } from '@/lib/subdomains';
+import { supabase } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { rootDomain, protocol } from '@/lib/utils';
+import { isValidIcon } from '@/lib/subdomains';
 
 export async function createSubdomainAction(
   prevState: any,
@@ -33,15 +33,22 @@ export async function createSubdomainAction(
       subdomain,
       icon,
       success: false,
-      error:
-        'Subdomain can only have lowercase letters, numbers, and hyphens. Please try again.'
+      error: 'Subdomain can only have lowercase letters, numbers, and hyphens. Please try again.'
     };
   }
 
-  const subdomainAlreadyExists = await redis.get(
-    `subdomain:${sanitizedSubdomain}`
-  );
-  if (subdomainAlreadyExists) {
+  const { data: existingStore, error: checkError } = await supabase
+    .from('Store')
+    .select('slug')
+    .eq('slug', sanitizedSubdomain)
+    .single();
+
+  if (checkError && checkError.code !== 'PGRST116') {
+    console.error('Error al verificar slug:', checkError);
+    return { success: false, error: 'Error en la base de datos.' };
+  }
+
+  if (existingStore) {
     return {
       subdomain,
       icon,
@@ -50,10 +57,17 @@ export async function createSubdomainAction(
     };
   }
 
-  await redis.set(`subdomain:${sanitizedSubdomain}`, {
-    emoji: icon,
-    createdAt: Date.now()
+  const { error: insertError } = await supabase.from('Store').insert({
+    slug: sanitizedSubdomain,
+    name: `Tienda ${sanitizedSubdomain}`,
+    heroTitle: icon,
+    status: 'BUILT'
   });
+
+  if (insertError) {
+    console.error('Error al insertar tienda:', insertError);
+    return { success: false, error: 'No se pudo crear la tienda.' };
+  }
 
   redirect(`${protocol}://${sanitizedSubdomain}.${rootDomain}`);
 }
@@ -62,8 +76,18 @@ export async function deleteSubdomainAction(
   prevState: any,
   formData: FormData
 ) {
-  const subdomain = formData.get('subdomain');
-  await redis.del(`subdomain:${subdomain}`);
+  const subdomain = formData.get('subdomain') as string;
+  
+  const { error } = await supabase
+    .from('Store')
+    .delete()
+    .eq('slug', subdomain);
+
+  if (error) {
+    console.error('Error al borrar tienda:', error);
+    return { error: 'No se pudo borrar el subdominio.' };
+  }
+
   revalidatePath('/admin');
-  return { success: 'Domain deleted successfully' };
+  return { success: 'Subdominio borrado con éxito.' };
 }
