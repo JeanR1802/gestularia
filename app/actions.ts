@@ -37,16 +37,11 @@ export async function createSubdomainAction(
     };
   }
 
-  const { data: existingStore, error: checkError } = await supabase
+  const { data: existingStore } = await supabase
     .from('Store')
     .select('slug')
     .eq('slug', sanitizedSubdomain)
     .single();
-
-  if (checkError && checkError.code !== 'PGRST116') {
-    console.error('Error al verificar slug:', checkError);
-    return { success: false, error: 'Error en la base de datos.' };
-  }
 
   if (existingStore) {
     return {
@@ -60,7 +55,7 @@ export async function createSubdomainAction(
   const { error: insertError } = await supabase.from('Store').insert({
     slug: sanitizedSubdomain,
     name: `Tienda ${sanitizedSubdomain}`,
-    heroTitle: icon,
+    heroTitle: icon, // Usamos el emoji como título
     status: 'BUILT'
   });
 
