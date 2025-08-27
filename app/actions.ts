@@ -1,88 +1,114 @@
+// FILE: /app/actions.ts
 'use server';
 
-import { supabase } from '@/lib/supabase';
+import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { rootDomain, protocol } from '@/lib/utils';
-import { isValidIcon } from '@/lib/subdomains';
 
-export async function createSubdomainAction(
-  prevState: any,
-  formData: FormData
-) {
-  const subdomain = formData.get('subdomain') as string;
-  const icon = formData.get('icon') as string;
+/**
+ * Crea un nuevo sitio para el usuario autenticado.
+ * Compatible con el hook `useActionState` de React.
+ */
+export async function createSite(prevState: any, formData: FormData) {
+  const supabase = createServerActionClient({ cookies });
 
-  if (!subdomain || !icon) {
-    return { success: false, error: 'Subdomain and icon are required' };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, message: 'Error de autenticación. Por favor, inicia sesión de nuevo.' };
   }
 
-  if (!isValidIcon(icon)) {
-    return {
-      subdomain,
-      icon,
-      success: false,
-      error: 'Please enter a valid emoji (maximum 10 characters)'
-    };
+  const subdomain = formData.get('subdomain') as string;
+
+  if (!subdomain) {
+    return { success: false, message: 'El nombre del sitio es requerido.' };
   }
 
   const sanitizedSubdomain = subdomain.toLowerCase().replace(/[^a-z0-9-]/g, '');
 
+  if (sanitizedSubdomain.length < 3) {
+      return { success: false, message: 'El nombre debe tener al menos 3 caracteres.' };
+  }
+
   if (sanitizedSubdomain !== subdomain) {
     return {
-      subdomain,
-      icon,
       success: false,
-      error: 'Subdomain can only have lowercase letters, numbers, and hyphens. Please try again.'
+      message: 'El nombre solo puede contener letras minúsculas, números y guiones.'
     };
   }
 
-  const { data: existingStore } = await supabase
-    .from('Store')
-    .select('slug')
-    .eq('slug', sanitizedSubdomain)
+  const { data: existingSite } = await supabase
+    .from('sites')
+    .select('name')
+    .eq('name', sanitizedSubdomain)
     .single();
 
-  if (existingStore) {
-    return {
-      subdomain,
-      icon,
-      success: false,
-      error: 'This subdomain is already taken'
-    };
+  if (existingSite) {
+    return { success: false, message: 'Este nombre de sitio ya está en uso.' };
   }
 
-  const { error: insertError } = await supabase.from('Store').insert({
-    slug: sanitizedSubdomain,
-    name: `Tienda ${sanitizedSubdomain}`,
-    heroTitle: icon, // Usamos el emoji como título
-    status: 'BUILT'
-  });
-
-  if (insertError) {
-    console.error('Error al insertar tienda:', insertError);
-    return { success: false, error: 'No se pudo crear la tienda.' };
-  }
-
-  redirect(`${protocol}://${sanitizedSubdomain}.${rootDomain}`);
-}
-
-export async function deleteSubdomainAction(
-  prevState: any,
-  formData: FormData
-) {
-  const subdomain = formData.get('subdomain') as string;
-  
   const { error } = await supabase
-    .from('Store')
-    .delete()
-    .eq('slug', subdomain);
+    .from('sites')
+    .insert({ name: sanitizedSubdomain, user_id: user.id });
 
   if (error) {
-    console.error('Error al borrar tienda:', error);
-    return { error: 'No se pudo borrar el subdominio.' };
+    console.error('Error al crear el sitio:', error);
+    return { success: false, message: 'No se pudo crear el sitio. Inténtalo de nuevo.' };
   }
 
-  revalidatePath('/admin');
-  return { success: 'Subdominio borrado con éxito.' };
+  revalidatePath('/dashboard');
+
+  return { success: true, message: '¡Sitio creado con éxito!' };
+}
+
+
+/**
+ * Actualiza o crea el contenido de un sitio específico.
+ */
+export async function updateSiteContent(siteId: string, content: string) {
+  const supabase = createServerActionClient({ cookies });
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, message: "No autenticado." };
+  }
+
+  // Verificamos que el usuario sea el dueño del sitio que intenta editar.
+  const { data: site, error: siteError } = await supabase
+    .from('sites')
+    .select('id, name')
+    .eq('id', siteId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (siteError || !site) {
+    return { success: false, message: "No tienes permiso para editar este sitio." };
+  }
+
+  // Usamos 'upsert' para crear el contenido si no existe, o actualizarlo si ya existe.
+  const { error } = await supabase.from('site_content').upsert(
+    {
+      site_id: siteId,
+      content: JSON.parse(content),
+      updated_at: new Date().toISOString(), // Buena práctica: actualizar la fecha de modificación
+    },
+    {
+      // AÑADIMOS ESTA LÍNEA: Le dice a Supabase que si ya existe una fila
+      // con este 'site_id', debe actualizarla en lugar de crear una nueva.
+      onConflict: 'site_id',
+    }
+  );
+
+  if (error) {
+    console.error("Error al actualizar el contenido:", error);
+    return { success: false, message: "No se pudieron guardar los cambios." };
+  }
+
+  // Revalidamos la caché para que los cambios se vean al instante.
+  revalidatePath(`/editor/${siteId}`);
+  revalidatePath(`/s/${site.name}`);
+
+  return { success: true, message: "¡Cambios guardados con éxito!" };
 }
