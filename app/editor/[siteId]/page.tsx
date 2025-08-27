@@ -3,16 +3,19 @@
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import EditorClient from '@/components/ui/EditorClient'; // Importamos el nuevo componente
+import EditorClient from '@/components/ui/EditorClient';
 
+// CORRECCIÓN: Ajustamos el tipo de 'params' para que sea una Promesa,
+// como lo espera tu configuración de Next.js.
 type EditorPageProps = {
-  params: {
+  params: Promise<{
     siteId: string;
-  };
+  }>;
 };
 
 export default async function EditorPage({ params }: EditorPageProps) {
-  const { siteId } = params;
+  // CORRECCIÓN: Usamos 'await' para obtener el valor de los parámetros.
+  const { siteId } = await params;
   const supabase = createServerComponentClient({ cookies });
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -20,7 +23,6 @@ export default async function EditorPage({ params }: EditorPageProps) {
     redirect('/login');
   }
 
-  // 1. Obtenemos la información del sitio para asegurarnos de que el usuario es el dueño.
   const { data: site } = await supabase
     .from('sites')
     .select('id, name')
@@ -36,22 +38,16 @@ export default async function EditorPage({ params }: EditorPageProps) {
     );
   }
 
-  // 2. Obtenemos el contenido actual del sitio.
   const { data: siteContent } = await supabase
     .from('site_content')
     .select('content')
     .eq('site_id', siteId)
-    .single();
+    .maybeSingle();
 
-  // 3. Definimos un contenido por defecto si aún no se ha creado nada.
-  const initialContent = siteContent?.content || {
-    title: 'Título de tu Página',
-    description: 'Empieza a escribir tu contenido aquí.',
-  };
+  const initialContent = siteContent?.content || [];
 
   return (
     <div>
-      {/* Pasamos los datos a un Componente de Cliente que manejará la interactividad */}
       <EditorClient site={site} initialContent={initialContent} />
     </div>
   );
