@@ -18,11 +18,19 @@ export default async function DashboardPage() {
     redirect('/login');
   }
 
-  // MODIFICACIÓN: Ahora seleccionamos el 'id' y el 'name' de cada sitio.
   const { data: sites } = await supabase
     .from('sites')
-    .select('id, name') // <-- Añadimos 'id' aquí
+    .select('id, name')
     .eq('user_id', session.user.id);
+
+  // --- INICIO DE LA CORRECCIÓN ---
+  // Determinamos el dominio base dependiendo del entorno
+  const rootDomain = process.env.NODE_ENV === 'production' 
+    ? 'gestularia.com' 
+    : 'localhost:3000';
+  
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+  // --- FIN DE LA CORRECCIÓN ---
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -66,22 +74,25 @@ export default async function DashboardPage() {
             </h3>
             <div className="mt-4 space-y-4">
               {sites && sites.length > 0 ? (
-                sites.map((site) => (
-                  <div key={site.id} className="flex items-center justify-between bg-white p-4 border border-gray-200 rounded-lg">
-                    <div>
-                      <p className="font-semibold text-gray-800">{site.name}.tudominio.com</p>
+                sites.map((site) => {
+                  // Construimos la URL dinámicamente
+                  const siteUrl = `${protocol}://${site.name}.${rootDomain}`;
+                  return (
+                    <div key={site.id} className="flex items-center justify-between bg-white p-4 border border-gray-200 rounded-lg">
+                      <div>
+                        <p className="font-semibold text-gray-800">{site.name}.{rootDomain}</p>
+                      </div>
+                      <div className="flex space-x-2">
+                         <Link href={siteUrl} target="_blank" className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200">
+                          Visitar
+                        </Link>
+                        <Link href={`/editor/${site.id}`} className="rounded-md bg-blue-100 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-200">
+                          Editar
+                        </Link>
+                      </div>
                     </div>
-                    <div className="flex space-x-2">
-                       <Link href={`http://${site.name}.localhost:3000`} target="_blank" className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200">
-                        Visitar
-                      </Link>
-                      {/* MODIFICACIÓN: El botón 'Editar' ahora es un enlace a la página del editor. */}
-                      <Link href={`/editor/${site.id}`} className="rounded-md bg-blue-100 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-200">
-                        Editar
-                      </Link>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="bg-white border border-gray-200 rounded-lg p-6 text-center">
                   <p className="text-sm text-gray-500">
