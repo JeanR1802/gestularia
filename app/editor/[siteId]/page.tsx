@@ -5,8 +5,6 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import EditorClient from '@/components/ui/EditorClient';
 
-// CORRECCIÓN: Ajustamos el tipo de 'params' para que sea una Promesa,
-// como lo espera tu configuración de Next.js.
 type EditorPageProps = {
   params: Promise<{
     siteId: string;
@@ -14,7 +12,6 @@ type EditorPageProps = {
 };
 
 export default async function EditorPage({ params }: EditorPageProps) {
-  // CORRECCIÓN: Usamos 'await' para obtener el valor de los parámetros.
   const { siteId } = await params;
   const supabase = createServerComponentClient({ cookies });
 
@@ -44,7 +41,17 @@ export default async function EditorPage({ params }: EditorPageProps) {
     .eq('site_id', siteId)
     .maybeSingle();
 
-  const initialContent = siteContent?.content || [];
+  // --- Lógica para manejar tanto la estructura nueva como la antigua ---
+  const content = siteContent?.content;
+  
+  const initialContent = {
+    header: !Array.isArray(content) && content?.header
+      ? content.header
+      : { logoText: site.name, navLinks: [{ id: '1', text: 'Inicio', href: '#' }] },
+    blocks: Array.isArray(content)
+      ? content
+      : content?.blocks || []
+  };
 
   return (
     <div>
