@@ -3,9 +3,13 @@
 import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import fs from 'fs/promises';
-import path from 'path';
+
+// --- CAMBIO 1: Eliminamos 'fs' y 'path' ---
+// import fs from 'fs/promises';
+// import path from 'path';
+
+// --- CAMBIO 2: Importamos el contenido de la plantilla directamente ---
+import minimaContent from '@/app/templates/minima/initial-content.json';
 
 /**
  * Crea un nuevo sitio para el usuario autenticado (Función Original).
@@ -116,9 +120,10 @@ export async function createSiteFromTemplate(
   formData: FormData
 ) {
   const supabase = createServerActionClient({ cookies });
-  const { data: { session } } = await supabase.auth.getSession();
+  // Usamos getUser() para ser consistentes y seguros
+  const { data: { user } } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (!user) {
     return { success: false, message: 'No estás autenticado.' };
   }
 
@@ -126,41 +131,32 @@ export async function createSiteFromTemplate(
   const templateId = formData.get('templateId') as string;
 
   // --- Validación del subdominio (reutilizando tu lógica) ---
-  if (!subdomain) {
-    return { success: false, message: 'El nombre del subdominio es requerido.' };
-  }
+  if (!subdomain) { return { success: false, message: 'El nombre del subdominio es requerido.' }; }
   const sanitizedSubdomain = subdomain.toLowerCase().replace(/[^a-z0-9-]/g, '');
-  if (sanitizedSubdomain.length < 3) {
-    return { success: false, message: 'El nombre debe tener al menos 3 caracteres.' };
-  }
-  if (sanitizedSubdomain !== subdomain) {
-    return { success: false, message: 'El nombre solo puede contener letras minúsculas, números y guiones.' };
-  }
-  const { data: existingSite } = await supabase
-    .from('sites')
-    .select('id')
-    .eq('name', sanitizedSubdomain)
-    .single();
-  if (existingSite) {
-    return { success: false, message: 'Este nombre de subdominio ya está en uso.' };
-  }
-  if (!templateId) {
-    return { success: false, message: 'No se seleccionó ninguna plantilla.' };
-  }
+  if (sanitizedSubdomain.length < 3) { return { success: false, message: 'El nombre debe tener al menos 3 caracteres.' }; }
+  if (sanitizedSubdomain !== subdomain) { return { success: false, message: 'El nombre solo puede contener letras minúsculas, números y guiones.' }; }
+  const { data: existingSite } = await supabase.from('sites').select('id').eq('name', sanitizedSubdomain).single();
+  if (existingSite) { return { success: false, message: 'Este nombre de subdominio ya está en uso.' }; }
+  if (!templateId) { return { success: false, message: 'No se seleccionó ninguna plantilla.' }; }
   
-  try {
-    // 1. Leer el archivo de contenido inicial de la plantilla
-    const filePath = path.join(process.cwd(), 'app', 'templates', templateId, 'initial-content.json');
-    const templateContentString = await fs.readFile(filePath, 'utf8');
-    const templateContent = JSON.parse(templateContentString);
+  // --- CAMBIO 3: Obtenemos el contenido de la plantilla de forma segura ---
+  let templateContent;
+  switch (templateId) {
+    case 'minima':
+      templateContent = minimaContent;
+      break;
+    default:
+      return { success: false, message: 'Plantilla desconocida o no válida.' };
+  }
 
-    // 2. Crear el sitio en la tabla 'sites'
+  try {
+    // 1. Crear el sitio en la tabla 'sites'
     const { data: newSite, error: siteError } = await supabase
       .from('sites')
       .insert({
         name: sanitizedSubdomain,
-        user_id: session.user.id,
-        template_name: templateId, // Guardamos el nombre de la plantilla
+        user_id: user.id, // Usamos el user.id de getUser()
+        template_name: templateId,
       })
       .select('id')
       .single();
@@ -170,7 +166,7 @@ export async function createSiteFromTemplate(
       return { success: false, message: 'Error al crear el registro del sitio.' };
     }
 
-    // 3. Añadir el contenido inicial en la tabla 'site_content'
+    // 2. Añadir el contenido inicial en la tabla 'site_content'
     const { error: contentError } = await supabase
       .from('site_content')
       .insert({
@@ -184,13 +180,11 @@ export async function createSiteFromTemplate(
     }
 
   } catch (error) {
-    console.error('Error reading template file or processing creation:', error);
-    return { success: false, message: 'No se pudo encontrar o procesar el archivo de la plantilla.' };
+    console.error('Database operation failed:', error);
+    return { success: false, message: 'Ocurrió un error al contactar la base de datos.' };
   }
   
-  // 4. Refrescar el dashboard
+  // 3. Refrescar el dashboard y devolver éxito
   revalidatePath('/dashboard');
-  
-  // 5. Devolvemos un estado de éxito para que el cliente redirija
   return { success: true, message: '¡Sitio creado con éxito!' };
 }
