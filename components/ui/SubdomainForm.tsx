@@ -41,7 +41,7 @@ export function SubdomainForm() {
             required
           />
           <span className="inline-flex items-center rounded-r-md border border-l-0 border-gray-300 bg-gray-50 px-3 text-gray-500 sm:text-sm">
-            .tudominio.com
+            .gestularia.com
           </span>
         </div>
       </div>

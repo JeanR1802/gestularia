@@ -16,7 +16,7 @@ export default function HomePage() {
             href="/login"
             className="rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
           >
-            Empezar Ahoraaaaaa
+            Empezar Ahora
           </Link>
           <a href="#" className="text-sm font-semibold leading-6 text-gray-900">
             Ver Características <span aria-hidden="true">→</span>
