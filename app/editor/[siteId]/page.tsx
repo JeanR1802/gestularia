@@ -1,12 +1,9 @@
-// FILE: /app/editor/[siteId]/page.tsx
-
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
 import EditorClient from '@/components/ui/EditorClient';
 
 // ----------------------
-// TIPOS INTERNOS
+// TIPOS
 // ----------------------
 type HeadingBlock = { id: string; type: 'heading'; content: string };
 type ParagraphBlock = { id: string; type: 'paragraph'; content: string };
@@ -24,15 +21,23 @@ type PageContent = {
   blocks: Block[];
 };
 
+type PageProps = { params: { siteId: string } };
+
 // ----------------------
-// PÁGINA PRINCIPAL
+// PAGE
 // ----------------------
-export default async function EditorPage({ params }: any) {
+export default async function EditorPage({ params }: PageProps) {
   const { siteId } = params;
   const supabase = createServerComponentClient({ cookies });
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Por favor inicia sesión para continuar.</p>
+      </div>
+    );
+  }
 
   const { data: site } = await supabase
     .from('sites')
@@ -57,18 +62,10 @@ export default async function EditorPage({ params }: any) {
 
   const content = siteContent?.content;
 
-  let initialContent: PageContent;
-  if (content && !Array.isArray(content)) {
-    initialContent = {
-      header: content.header,
-      blocks: content.blocks || [],
-    };
-  } else {
-    initialContent = {
-      header: { logoText: site.name, navLinks: [{ id: '1', text: 'Inicio', href: '#' }] },
-      blocks: Array.isArray(content) ? content : [],
-    };
-  }
+  const initialContent: PageContent = {
+    header: content?.header || { logoText: site.name, navLinks: [{ id: '1', text: 'Inicio', href: '#' }] },
+    blocks: Array.isArray(content) ? content : content?.blocks || [],
+  };
 
   return <EditorClient site={site} initialContent={initialContent} />;
 }

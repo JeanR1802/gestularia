@@ -1,5 +1,3 @@
-// FILE: /app/s/[subdomain]/page.tsx
-
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
@@ -23,6 +21,8 @@ type PageContent = {
   header: HeaderContent;
   blocks: Block[];
 };
+
+type PageProps = { params: { subdomain: string } };
 
 // ----------------------
 // FETCH DATA
@@ -50,7 +50,7 @@ async function getSiteData(subdomain: string) {
 // ----------------------
 // PAGE
 // ----------------------
-export default async function SitePage({ params }: any) {
+export default async function SitePage({ params }: PageProps) {
   const { subdomain } = params;
   const data = await getSiteData(subdomain);
 
@@ -58,7 +58,7 @@ export default async function SitePage({ params }: any) {
 
   const { site, siteContent } = data;
 
-  let parsedContent;
+  let parsedContent: PageContent | null;
   try {
     parsedContent = typeof siteContent?.content === 'string'
       ? JSON.parse(siteContent.content)
