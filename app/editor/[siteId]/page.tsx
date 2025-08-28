@@ -5,14 +5,15 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import EditorClient from '@/components/ui/EditorClient';
 
+// 👇 Tipo corregido: params ya NO es un Promise
 type EditorPageProps = {
-  params: Promise<{
+  params: {
     siteId: string;
-  }>;
+  };
 };
 
 export default async function EditorPage({ params }: EditorPageProps) {
-  const { siteId } = await params;
+  const { siteId } = params; // ya no usamos await
   const supabase = createServerComponentClient({ cookies });
 
   const { data: { user } } = await supabase.auth.getUser();
