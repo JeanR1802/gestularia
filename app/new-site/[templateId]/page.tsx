@@ -2,19 +2,21 @@ import { templates } from "@/app/templates";
 import { notFound } from "next/navigation";
 import { CreateSiteForm } from "./_components/CreateSiteForm";
 
-// ANTES TENÍAMOS UN TIPO SEPARADO 'PageProps'. AHORA LO DEFINIMOS DIRECTAMENTE.
+// 1. Definimos un tipo claro y explícito para las props de la página
+type CreateSitePageProps = {
+  params: {
+    templateId: string;
+  };
+};
 
-export default function CreateSiteFromTemplatePage({
-  params,
-}: {
-  params: { templateId: string };
-}) {
+// 2. La función ahora acepta un solo argumento 'props' con el tipo que definimos.
+//    Desestructuramos 'params' DENTRO de la función, no en la firma.
+export default function CreateSiteFromTemplatePage(props: CreateSitePageProps) {
+  const { params } = props;
   const { templateId } = params;
   
-  // Buscamos la plantilla seleccionada en nuestro registro
   const template = templates.find((t) => t.id === templateId);
 
-  // Si la URL tiene un ID de plantilla que no existe, mostramos un error 404
   if (!template) {
     notFound();
   }
