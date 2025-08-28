@@ -1,13 +1,14 @@
-// FILE: /app/actions.ts
 'use server';
 
 import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import fs from 'fs/promises';
+import path from 'path';
 
 /**
- * Crea un nuevo sitio para el usuario autenticado.
- * Compatible con el hook `useActionState` de React.
+ * Crea un nuevo sitio para el usuario autenticado (Función Original).
  */
 export async function createSite(prevState: any, formData: FormData) {
   const supabase = createServerActionClient({ cookies });
@@ -63,9 +64,8 @@ export async function createSite(prevState: any, formData: FormData) {
   return { success: true, message: '¡Sitio creado con éxito!' };
 }
 
-
 /**
- * Actualiza o crea el contenido de un sitio específico.
+ * Actualiza o crea el contenido de un sitio específico (Función Original).
  */
 export async function updateSiteContent(siteId: string, content: string) {
   const supabase = createServerActionClient({ cookies });
@@ -75,7 +75,6 @@ export async function updateSiteContent(siteId: string, content: string) {
     return { success: false, message: "No autenticado." };
   }
 
-  // Verificamos que el usuario sea el dueño del sitio que intenta editar.
   const { data: site, error: siteError } = await supabase
     .from('sites')
     .select('id, name')
@@ -87,16 +86,13 @@ export async function updateSiteContent(siteId: string, content: string) {
     return { success: false, message: "No tienes permiso para editar este sitio." };
   }
 
-  // Usamos 'upsert' para crear el contenido si no existe, o actualizarlo si ya existe.
   const { error } = await supabase.from('site_content').upsert(
     {
       site_id: siteId,
       content: JSON.parse(content),
-      updated_at: new Date().toISOString(), // Buena práctica: actualizar la fecha de modificación
+      updated_at: new Date().toISOString(),
     },
     {
-      // AÑADIMOS ESTA LÍNEA: Le dice a Supabase que si ya existe una fila
-      // con este 'site_id', debe actualizarla en lugar de crear una nueva.
       onConflict: 'site_id',
     }
   );
@@ -106,9 +102,95 @@ export async function updateSiteContent(siteId: string, content: string) {
     return { success: false, message: "No se pudieron guardar los cambios." };
   }
 
-  // Revalidamos la caché para que los cambios se vean al instante.
   revalidatePath(`/editor/${siteId}`);
   revalidatePath(`/s/${site.name}`);
 
   return { success: true, message: "¡Cambios guardados con éxito!" };
+}
+
+// ============================================================================
+// FUNCIÓN CORREGIDA PARA CREAR SITIOS DESDE PLANTILLAS
+// ============================================================================
+export async function createSiteFromTemplate(
+  prevState: { message: string, success?: boolean },
+  formData: FormData
+) {
+  const supabase = createServerActionClient({ cookies });
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (!session) {
+    return { success: false, message: 'No estás autenticado.' };
+  }
+
+  const subdomain = formData.get('subdomain') as string;
+  const templateId = formData.get('templateId') as string;
+
+  // --- Validación del subdominio (reutilizando tu lógica) ---
+  if (!subdomain) {
+    return { success: false, message: 'El nombre del subdominio es requerido.' };
+  }
+  const sanitizedSubdomain = subdomain.toLowerCase().replace(/[^a-z0-9-]/g, '');
+  if (sanitizedSubdomain.length < 3) {
+    return { success: false, message: 'El nombre debe tener al menos 3 caracteres.' };
+  }
+  if (sanitizedSubdomain !== subdomain) {
+    return { success: false, message: 'El nombre solo puede contener letras minúsculas, números y guiones.' };
+  }
+  const { data: existingSite } = await supabase
+    .from('sites')
+    .select('id')
+    .eq('name', sanitizedSubdomain)
+    .single();
+  if (existingSite) {
+    return { success: false, message: 'Este nombre de subdominio ya está en uso.' };
+  }
+  if (!templateId) {
+    return { success: false, message: 'No se seleccionó ninguna plantilla.' };
+  }
+  
+  try {
+    // 1. Leer el archivo de contenido inicial de la plantilla
+    const filePath = path.join(process.cwd(), 'app', 'templates', templateId, 'initial-content.json');
+    const templateContentString = await fs.readFile(filePath, 'utf8');
+    const templateContent = JSON.parse(templateContentString);
+
+    // 2. Crear el sitio en la tabla 'sites'
+    const { data: newSite, error: siteError } = await supabase
+      .from('sites')
+      .insert({
+        name: sanitizedSubdomain,
+        user_id: session.user.id,
+        template_name: templateId, // Guardamos el nombre de la plantilla
+      })
+      .select('id')
+      .single();
+
+    if (siteError || !newSite) {
+      console.error('Error creating site:', siteError);
+      return { success: false, message: 'Error al crear el registro del sitio.' };
+    }
+
+    // 3. Añadir el contenido inicial en la tabla 'site_content'
+    const { error: contentError } = await supabase
+      .from('site_content')
+      .insert({
+        site_id: newSite.id,
+        content: templateContent,
+      });
+
+    if (contentError) {
+      console.error('Error inserting content:', contentError);
+      return { success: false, message: 'Error al guardar el contenido inicial.' };
+    }
+
+  } catch (error) {
+    console.error('Error reading template file or processing creation:', error);
+    return { success: false, message: 'No se pudo encontrar o procesar el archivo de la plantilla.' };
+  }
+  
+  // 4. Refrescar el dashboard
+  revalidatePath('/dashboard');
+  
+  // 5. Devolvemos un estado de éxito para que el cliente redirija
+  return { success: true, message: '¡Sitio creado con éxito!' };
 }

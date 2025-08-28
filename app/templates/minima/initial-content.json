@@ -1,0 +1,47 @@
+{
+  "header": {
+    "logoText": "Mi Nuevo Sitio",
+    "navLinks": [
+      { "id": "link-1", "text": "Inicio", "href": "#" },
+      { "id": "link-2", "text": "Acerca de", "href": "#" },
+      { "id": "link-3", "text": "Contacto", "href": "#" }
+    ]
+  },
+  "blocks": [
+    {
+      "id": "hero-1",
+      "type": "hero",
+      "content": {
+        "heading": "Bienvenido a tu Página Web Profesional",
+        "subheading": "Esta es la plantilla 'Minima'. Un diseño limpio y moderno para empezar a construir tu presencia en línea.",
+        "image": "https://images.unsplash.com/photo-1487017159836-4e23ece2e4cf?q=80&w=2671",
+        "styles": { "textAlignment": "center", "verticalAlignment": "center" }
+      }
+    },
+    { "id": "heading-1", "type": "heading", "content": "Un Título que Atrae" },
+    { "id": "paragraph-1", "type": "paragraph", "content": "Aquí puedes describir tu producto, servicio o idea principal. La plantilla 'Minima' está diseñada para que tu contenido sea el protagonista." },
+    {
+      "id": "features-1",
+      "type": "features",
+      "content": {
+        "heading": "Características Principales",
+        "subheading": "Descubre todo lo que nuestro producto puede hacer por ti y cómo puede transformar tu negocio.",
+        "features": [
+          { "id": "feat-1", "icon": "Rocket", "title": "Desarrollo Rápido", "description": "Lanza tu sitio en minutos, no en meses." },
+          { "id": "feat-2", "icon": "ShieldCheck", "title": "Seguro y Confiable", "description": "Con la mejor seguridad del mercado." },
+          { "id": "feat-3", "icon": "Smartphone", "title": "Totalmente Responsivo", "description": "Tu sitio web se verá increíble en cualquier dispositivo." }
+        ]
+      }
+    },
+    {
+      "id": "cta-1",
+      "type": "cta",
+      "content": {
+        "heading": "¿Listo para Empezar?",
+        "subheading": "Únete a miles de usuarios que ya están construyendo su futuro con nosotros. No se requiere tarjeta de crédito.",
+        "buttonText": "Crear Mi Sitio Gratis",
+        "buttonHref": "#"
+      }
+    }
+  ]
+}
