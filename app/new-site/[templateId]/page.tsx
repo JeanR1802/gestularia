@@ -1,15 +1,17 @@
-import { templates } from '@/app/templates';
-import { notFound } from 'next/navigation';
-import { CreateSiteForm } from './_components/CreateSiteForm';
+// FILE: /app/new-site/[templateId]/page.tsx
 
-export default function CreateSiteFromTemplatePage({
-  params,
-}: {
-  params: { templateId: string };
-}) {
+import { templates } from "@/app/templates";
+import { notFound } from "next/navigation";
+import { CreateSiteForm } from "./_components/CreateSiteForm";
+
+// ----------------------
+// PÁGINA PRINCIPAL
+// ----------------------
+export default function CreateSiteFromTemplatePage({ params }: any) {
   const { templateId } = params;
-  const template = templates.find(t => t.id === templateId);
-  if (!template) return notFound();
+
+  const template = templates.find((t) => t.id === templateId);
+  if (!template) notFound();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#111]">
@@ -22,8 +24,7 @@ export default function CreateSiteFromTemplatePage({
             Ponle un nombre a tu sitio
           </h1>
           <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-            Estás usando la plantilla{' '}
-            <span className="font-bold text-gray-800 dark:text-gray-200">{template.name}</span>. Elige un subdominio para publicarlo.
+            Estás usando la plantilla <span className="font-bold text-gray-800 dark:text-gray-200">{template.name}</span>. Elige un subdominio para publicarlo.
           </p>
         </div>
 

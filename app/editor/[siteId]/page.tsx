@@ -6,12 +6,12 @@ import { redirect } from 'next/navigation';
 import EditorClient from '@/components/ui/EditorClient';
 
 // ----------------------
-// TIPOS
+// TIPOS INTERNOS
 // ----------------------
 type HeadingBlock = { id: string; type: 'heading'; content: string };
 type ParagraphBlock = { id: string; type: 'paragraph'; content: string };
 type ImageBlock = { id: string; type: 'image'; content: { src: string; alt: string } };
-type HeroBlock = { id: string; type: 'hero'; content: any }; // Ajusta según tus datos reales
+type HeroBlock = { id: string; type: 'hero'; content: any };
 type Block = HeadingBlock | ParagraphBlock | ImageBlock | HeroBlock;
 
 type HeaderContent = {
@@ -24,22 +24,16 @@ type PageContent = {
   blocks: Block[];
 };
 
-type EditorPageProps = {
-  params: { siteId: string };
-};
-
 // ----------------------
-// FUNCIÓN PRINCIPAL
+// PÁGINA PRINCIPAL
 // ----------------------
-export default async function EditorPage({ params }: EditorPageProps) {
+export default async function EditorPage({ params }: any) {
   const { siteId } = params;
   const supabase = createServerComponentClient({ cookies });
 
-  // --- Obtener usuario ---
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // --- Obtener sitio ---
   const { data: site } = await supabase
     .from('sites')
     .select('id, name')
@@ -55,7 +49,6 @@ export default async function EditorPage({ params }: EditorPageProps) {
     );
   }
 
-  // --- Obtener contenido ---
   const { data: siteContent } = await supabase
     .from('site_content')
     .select('content')
@@ -64,7 +57,6 @@ export default async function EditorPage({ params }: EditorPageProps) {
 
   const content = siteContent?.content;
 
-  // --- Inicializar contenido con tipado seguro ---
   let initialContent: PageContent;
   if (content && !Array.isArray(content)) {
     initialContent = {
