@@ -1,5 +1,6 @@
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import EditorClient from '@/components/ui/EditorClient';
 
 // ----------------------
@@ -21,23 +22,18 @@ type PageContent = {
   blocks: Block[];
 };
 
-type PageProps = { params: { siteId: string } };
-
 // ----------------------
 // PAGE
 // ----------------------
-export default async function EditorPage({ params }: PageProps) {
+export default async function EditorPage({ params }: { params: { siteId: string } }) {
   const { siteId } = params;
   const supabase = createServerComponentClient({ cookies });
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Por favor inicia sesión para continuar.</p>
-      </div>
-    );
-  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect('/login');
 
   const { data: site } = await supabase
     .from('sites')
@@ -46,13 +42,12 @@ export default async function EditorPage({ params }: PageProps) {
     .eq('user_id', user.id)
     .single();
 
-  if (!site) {
+  if (!site)
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p>No tienes permiso para ver este sitio o no existe.</p>
       </div>
     );
-  }
 
   const { data: siteContent } = await supabase
     .from('site_content')
@@ -62,10 +57,13 @@ export default async function EditorPage({ params }: PageProps) {
 
   const content = siteContent?.content;
 
-  const initialContent: PageContent = {
-    header: content?.header || { logoText: site.name, navLinks: [{ id: '1', text: 'Inicio', href: '#' }] },
-    blocks: Array.isArray(content) ? content : content?.blocks || [],
-  };
+  const initialContent: PageContent =
+    content && !Array.isArray(content)
+      ? { header: content.header, blocks: content.blocks || [] }
+      : {
+          header: { logoText: site.name, navLinks: [{ id: '1', text: 'Inicio', href: '#' }] },
+          blocks: Array.isArray(content) ? content : [],
+        };
 
   return <EditorClient site={site} initialContent={initialContent} />;
 }

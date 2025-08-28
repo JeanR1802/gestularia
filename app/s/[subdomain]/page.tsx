@@ -22,8 +22,6 @@ type PageContent = {
   blocks: Block[];
 };
 
-type PageProps = { params: { subdomain: string } };
-
 // ----------------------
 // FETCH DATA
 // ----------------------
@@ -50,7 +48,7 @@ async function getSiteData(subdomain: string) {
 // ----------------------
 // PAGE
 // ----------------------
-export default async function SitePage({ params }: PageProps) {
+export default async function SitePage({ params }: { params: { subdomain: string } }) {
   const { subdomain } = params;
   const data = await getSiteData(subdomain);
 
@@ -58,11 +56,12 @@ export default async function SitePage({ params }: PageProps) {
 
   const { site, siteContent } = data;
 
-  let parsedContent: PageContent | null;
+  let parsedContent: PageContent | null = null;
   try {
-    parsedContent = typeof siteContent?.content === 'string'
-      ? JSON.parse(siteContent.content)
-      : siteContent?.content;
+    parsedContent =
+      typeof siteContent?.content === 'string'
+        ? JSON.parse(siteContent.content)
+        : siteContent?.content;
   } catch {
     parsedContent = null;
   }
@@ -82,7 +81,7 @@ export default async function SitePage({ params }: PageProps) {
         <div>
           <h1>{headerData.logoText}</h1>
           <hr />
-          {blocks.map(block => (
+          {blocks.map((block) => (
             <div key={block.id} style={{ marginTop: '20px' }}>
               {block.type === 'heading' && <h2>{(block as HeadingBlock).content}</h2>}
               {block.type === 'paragraph' && <p>{(block as ParagraphBlock).content}</p>}
