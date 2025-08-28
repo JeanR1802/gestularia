@@ -1,19 +1,45 @@
+// FILE: /app/editor/[siteId]/page.tsx
+
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import EditorClient from '@/components/ui/EditorClient';
 
-export default async function EditorPage({
-  params,
-}: {
+// ----------------------
+// TIPOS
+// ----------------------
+type HeadingBlock = { id: string; type: 'heading'; content: string };
+type ParagraphBlock = { id: string; type: 'paragraph'; content: string };
+type ImageBlock = { id: string; type: 'image'; content: { src: string; alt: string } };
+type HeroBlock = { id: string; type: 'hero'; content: any }; // Ajusta según tus datos reales
+type Block = HeadingBlock | ParagraphBlock | ImageBlock | HeroBlock;
+
+type HeaderContent = {
+  logoText: string;
+  navLinks: { id: string; text: string; href: string }[];
+};
+
+type PageContent = {
+  header: HeaderContent;
+  blocks: Block[];
+};
+
+type EditorPageProps = {
   params: { siteId: string };
-}) {
+};
+
+// ----------------------
+// FUNCIÓN PRINCIPAL
+// ----------------------
+export default async function EditorPage({ params }: EditorPageProps) {
   const { siteId } = params;
   const supabase = createServerComponentClient({ cookies });
 
+  // --- Obtener usuario ---
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
+  // --- Obtener sitio ---
   const { data: site } = await supabase
     .from('sites')
     .select('id, name')
@@ -21,13 +47,15 @@ export default async function EditorPage({
     .eq('user_id', user.id)
     .single();
 
-  if (!site)
+  if (!site) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p>No tienes permiso para ver este sitio o no existe.</p>
       </div>
     );
+  }
 
+  // --- Obtener contenido ---
   const { data: siteContent } = await supabase
     .from('site_content')
     .select('content')
@@ -36,13 +64,19 @@ export default async function EditorPage({
 
   const content = siteContent?.content;
 
-  const initialContent = {
-    header:
-      !Array.isArray(content) && content?.header
-        ? content.header
-        : { logoText: site.name, navLinks: [{ id: '1', text: 'Inicio', href: '#' }] },
-    blocks: Array.isArray(content) ? content : content?.blocks || [],
-  };
+  // --- Inicializar contenido con tipado seguro ---
+  let initialContent: PageContent;
+  if (content && !Array.isArray(content)) {
+    initialContent = {
+      header: content.header,
+      blocks: content.blocks || [],
+    };
+  } else {
+    initialContent = {
+      header: { logoText: site.name, navLinks: [{ id: '1', text: 'Inicio', href: '#' }] },
+      blocks: Array.isArray(content) ? content : [],
+    };
+  }
 
   return <EditorClient site={site} initialContent={initialContent} />;
 }
