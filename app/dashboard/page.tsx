@@ -1,5 +1,3 @@
-// FILE: app/dashboard/page.tsx
-
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -11,14 +9,17 @@ import { ArrowRight } from 'lucide-react';
 export default async function DashboardPage() {
   const supabase = createServerComponentClient({ cookies });
 
+  // --- CAMBIO 1: Reemplazamos getSession() por getUser() ---
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // --- CAMBIO 2: Verificamos 'user' en lugar de 'session' ---
   if (!user) {
     redirect('/login');
   }
 
+  // --- CAMBIO 3: Usamos user.id en la consulta ---
   const { data: sites } = await supabase
     .from('sites')
     .select('id, name')
@@ -38,6 +39,7 @@ export default async function DashboardPage() {
             </h1>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600 dark:text-gray-400 hidden sm:block">
+                {/* --- CAMBIO 4: Mostramos user.email --- */}
                 {user.email}
               </span>
               <ThemeToggleClient />
