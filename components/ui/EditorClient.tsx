@@ -80,7 +80,13 @@ export default function EditorClient({ site, initialContent }: EditorClientProps
         setBlocks(prev => [...prev, newBlock]);
     };
 
-    const updateBlock = <T extends Block>(id: string, newContent: T['content']) => { setBlocks(blocks.map(block => block.id === id ? { ...block, content: newContent } : block)); };
+    const updateBlock = <T extends Block>(id: string, newContent: T['content']) => {
+    setBlocks(blocks.map(block =>
+        block.id === id
+            ? { ...block, content: newContent } as Block // <-- Añadimos 'as Block' aquí
+            : block
+    ));
+};
     const deleteBlock = (id: string) => { setBlocks(blocks.filter(block => block.id !== id)); };
     
     const handleSave = async () => {
