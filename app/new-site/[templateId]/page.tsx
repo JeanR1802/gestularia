@@ -1,16 +1,14 @@
-// FILE: app/new-site/[templateId]/page.tsx
-
 import { templates } from "@/app/templates";
 import { notFound } from "next/navigation";
-import { CreateSiteForm } from "./_components/CreateSiteForm"; // Crearemos este componente a continuación
+import { CreateSiteForm } from "./_components/CreateSiteForm";
 
-type PageProps = {
-  params: {
-    templateId: string;
-  };
-};
+// ANTES TENÍAMOS UN TIPO SEPARADO 'PageProps'. AHORA LO DEFINIMOS DIRECTAMENTE.
 
-export default function CreateSiteFromTemplatePage({ params }: PageProps) {
+export default function CreateSiteFromTemplatePage({
+  params,
+}: {
+  params: { templateId: string };
+}) {
   const { templateId } = params;
   
   // Buscamos la plantilla seleccionada en nuestro registro
@@ -38,7 +36,6 @@ export default function CreateSiteFromTemplatePage({ params }: PageProps) {
 
         <div className="mt-10 max-w-xl mx-auto">
           <div className="bg-white dark:bg-[#1f1f1f] border border-gray-200 dark:border-gray-700 rounded-2xl shadow-md p-8">
-            {/* Pasamos el ID de la plantilla al formulario para que sepa cuál crear */}
             <CreateSiteForm templateId={template.id} />
           </div>
         </div>
